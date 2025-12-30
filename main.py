@@ -3,9 +3,9 @@ import base64
 import os
 
 # ۱. تنظیمات اولیه صفحه
-st.set_page_config(page_title="سامانه مهندسی محتوا عاشورا", layout="wide")
+st.set_page_config(page_title="مرکز فرماندهی تولید محتوای هوشمند", layout="wide")
 
-# ۲. تابع تبدیل عکس به فرمت CSS (Base64)
+# ۲. تبدیل تصاویر به فرمت Base64 برای استفاده در پس‌زمینه و لوگو
 def get_base64(bin_file):
     if os.path.exists(bin_file):
         with open(bin_file, 'rb') as f:
@@ -13,137 +13,131 @@ def get_base64(bin_file):
         return base64.b64encode(data).decode()
     return ""
 
-# نام فایل‌هایی که در گیت‌هاب داری (حتما مطمئن شو اسم فایل ها دقیقا همین باشد)
-img_background = "Picture1.png" # عکس کارگاهی که الان فرستادی (با فرمت png ذخیره کن)
-img_logo = "official_logo.png"   # لوگویی که در مرحله قبل فرستادی
+img_bg = "Picture1.png"
+img_logo = "official_logo.png"
 
-bin_str_logo = get_base64(img_logo)
-bin_str_bg = get_base64(img_background)
+bin_bg = get_base64(img_bg)
+bin_logo = get_base64(img_logo)
 
-# ۳. تزریق کدهای CSS برای دیزاین اختصاصی
+# ۳. تزریق CSS برای بک‌گراند کل صفحه، لوگو و استایل‌های مدرن
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
     
-    html, body, [data-testid="stAppViewContainer"] {{
-        background-color: #ffffff;
-        direction: rtl;
-        text-align: right;
-        font-family: 'Vazirmatn', sans-serif;
-    }}
-
-    /* نوار هدر پهن با تصویر پس زمینه ای که فرستادی */
-    .header-banner {{
-        position: relative;
-        background-image: linear-gradient(rgba(13, 71, 161, 0.4), rgba(13, 71, 161, 0.4)), url("data:image/png;base64,{bin_str_bg}");
+    /* پس‌زمینه کل سایت */
+    [data-testid="stAppViewContainer"] {{
+        background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url("data:image/png;base64,{bin_bg}");
         background-size: cover;
         background-position: center;
-        height: 250px;
-        width: 100%;
-        margin-top: -85px;
+        background-attachment: fixed;
+    }}
+
+    /* هدر شفاف و لوگو در سمت راست بالا */
+    .custom-header {{
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 100px;
+        background: rgba(13, 71, 161, 0.9);
         display: flex;
+        justify-content: flex-end;
         align-items: center;
-        justify-content: center;
-        border-radius: 0 0 40px 40px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        padding-right: 30px;
+        z-index: 1000;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }}
+    .header-logo {{
+        height: 80px;
+        filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.3));
     }}
 
-    /* لوگو در گوشه سمت راست بنر */
-    .corner-logo {{
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        width: 110px;
-        filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.4));
+    /* حذف فاصله بالای سایت به خاطر هدر جدید */
+    .block-container {{
+        padding-top: 120px !important;
+        direction: rtl;
+        text-align: right;
     }}
 
-    .header-banner h1 {{
-        color: white;
-        font-size: 45px;
+    html, body, p, div, label {{
+        font-family: 'Vazirmatn', sans-serif !important;
+        color: #0d47a1 !important;
         font-weight: bold;
-        text-shadow: 3px 3px 15px rgba(0,0,0,0.7);
-        margin: 0;
     }}
 
-    /* نوار فوتر سفارشی شما */
-    .footer-strip {{
-        background-color: #0d47a1;
-        color: #ffc107;
-        padding: 18px;
+    /* استایل دکمه‌های سایت‌های هوش مصنوعی */
+    .ai-button {{
+        display: block;
+        padding: 15px;
+        margin: 10px 0;
+        background: #ffc107;
+        color: #0d47a1 !important;
         text-align: center;
+        text-decoration: none;
+        border-radius: 15px;
         font-weight: bold;
-        border-radius: 12px;
-        margin-top: 60px;
-        font-size: 16px;
-        box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+        transition: 0.3s;
+        border: 2px solid #0d47a1;
+    }}
+    .ai-button:hover {{
+        background: #0d47a1;
+        color: #ffc107 !important;
+        transform: translateY(-3px);
     }}
 
-    /* اصلاح استایل دکمه و باکس متن */
     .stButton>button {{
-        background-color: #ffc107 !important;
-        color: #0d47a1 !important;
-        border-radius: 10px;
-        font-weight: bold;
-        border: none;
-        height: 50px;
-        transition: 0.3s;
+        background-color: #2e7d32 !important;
+        color: white !important;
+        width: 100%;
+        border-radius: 12px;
     }}
-    .stButton>button:hover {{
-        background-color: #ffd54f !important;
-        transform: scale(1.02);
-    }}
-    
-    h3, label, .stMarkdown p {{
-        color: #0d47a1 !important;
-        font-weight: bold;
-    }}
+
     </style>
     
-    <div class="header-banner">
-        <img src="data:image/png;base64,{bin_str_logo}" class="corner-logo">
-        <h1>سامانه مهندسی محتوا</h1>
+    <div class="custom-header">
+        <img src="data:image/png;base64,{bin_logo}" class="header-logo">
     </div>
-    <br>
 """, unsafe_allow_html=True)
 
-# ۴. سایدبار مدیریتی (سمت چپ ظاهر می شود)
+# ۴. سایدبار مدیریتی
 with st.sidebar:
-    st.markdown("### 📋 میز کار هوشمند")
-    st.info("کاربر گرامی خوش آمدید.")
-    unit = st.selectbox("بخش اجرایی را انتخاب کنید:", ["فنی و مهندسی", "امور مالی", "HSSE", "ماشین‌آلات"])
+    st.markdown("### ⚙️ کنترل پنل واحدها")
+    unit = st.selectbox("بخش اجرایی:", ["فنی و مهندسی", "امور مالی", "HSSE", "ماشین‌آلات"])
     st.divider()
+    st.write("درگاه تولید دانش سازمانی")
 
-# ۵. فضای اصلی عملیات
-col_a, col_b = st.columns([1, 1])
+# ۵. محتوای میانی و مرکز فرماندهی
+st.title("🛡️ سامانه مهندسی محتوای تخصصی")
+st.write("استراتژی تولید دانش بر پایه هوش مصنوعی مولد")
 
-with col_a:
-    st.markdown("### 🖋️ ثبت جزئیات واقعه")
-    desc = st.text_area("چالش مهندسی یا حادثه ایمنی را اینجا شرح دهید:", height=200, 
-                      placeholder="مثلاً: نحوه مقابله با خاک سست در تونل سازی...")
-    action = st.button("🚀 پردازش و مهندسی محتوا")
+col_main, col_tools = st.columns([1.5, 1])
 
-with col_b:
-    st.markdown("### 🎬 سناریوی پیشنهادی سیستم")
-    if action:
-        if desc:
-            with st.status("در حال تطبیق با استانداردهای نظام فنی...", expanded=True):
-                st.write("استخراج متن نشریات مرتبط...")
-                st.write("تحلیل تجربه عملیاتی ثبت شده...")
-                st.success("تجزیه و تحلیل با موفقیت انجام شد.")
-            
-            st.markdown(f"""
-            #### 📦 پکیج آموزشی واحد {unit}:
-            ۱. **سناریو:** آموزش تصویری مدیریت `{desc[:25]}...`  
-            ۲. **متدولوژی:** میکرولرنینگ تعاملی ۳ دقیقه‌ای  
-            ۳. **خروجی جانبی:** بروشور فنی جهت نصب در محل کارگاه  
-            """)
-            st.balloons()
-        else:
-            st.error("لطفاً فیلد گزارش را پر کنید.")
+with col_main:
+    st.markdown("### 📝 گام اول: نگارش سناریو")
+    # اضافه کردن فیلد انتخاب نوع تولید محتوا
+    content_type = st.selectbox("نوع تولید محتوا را انتخاب کنید:", 
+                                ["پادکست صوتی (Audio)", "کلیپ ویدیویی (Short Film)", "موشن گرافیک (Motion Graphic)", "کارت پستال / اینفوگرافیک (Card)"])
+    
+    script_area = st.text_area("سناریو یا متن خام محتوا را وارد کنید:", height=250, 
+                              placeholder="مثال: آموزش نکات ایمنی کار در ارتفاع بر اساس نشریات...")
 
-# ۶. نوار پایین دقیقاً با متنی که خواستید
+with col_tools:
+    st.markdown("### 🤖 گام دوم: تبدیل به رسانه (AI)")
+    st.write("با استفاده از لینک‌های زیر، سناریوی خود را به محتوا تبدیل کنید:")
+    
+    # دکمه‌های متصل به سایت‌های هوش مصنوعی
+    st.markdown(f"""
+        <a href="https://chatgpt.com/" target="_blank" class="ai-button">💬 ویرایش سناریو (ChatGPT)</a>
+        <a href="https://aistudio.google.com/" target="_blank" class="ai-button">✨ تحلیل حرفه‌ای اسناد (Google Studio)</a>
+        <a href="https://hailuoai.video/" target="_blank" class="ai-button">🎥 تولید کلیپ حرفه‌ای (Hailuo AI)</a>
+        <a href="https://app.heygen.com/" target="_blank" class="ai-button">🗣️ ساخت آواتار سخنگو (HeyGen)</a>
+        <a href="https://elevenlabs.io/" target="_blank" class="ai-button">🎙️ تولید پادکست (ElevenLabs)</a>
+        <a href="https://www.canva.com/" target="_blank" class="ai-button">🖼️ طراحی کارت پستال (Canva)</a>
+    """, unsafe_allow_html=True)
+
+# ۶. نوار پایین (فوتر)
 st.markdown("""
-    <div class="footer-strip">
+    <div style="background-color: #0d47a1; color: #ffc107; padding: 15px; text-align: center; font-weight: bold; border-radius: 15px; margin-top: 50px;">
         مرکز تحقیق و توسعه موسسه عاشورا - مدیریت تولید محتوا
     </div>
 """, unsafe_allow_html=True)
