@@ -131,7 +131,7 @@ if app_mode == "📂 ویترین دانش و آرشیو یادگیری":
                     st.video("rosazi.mp4")
                 else:
                     st.error("فایل rosazi.mp4 در گیت‌هاب یافت نشد.")
-            st.markdown("<p style='text-align:center;'>تاریخ تولید: ۱۴۰۳/۰۹/۱۵ | زمان: ۱۲ دقیقه</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center;'>تاریخ تولید: ۱۴۰۳/۰۹/۱۵ | زمان: ۱ دقیقه</p>", unsafe_allow_html=True)
 
     with tabs[1]:
         st.info("محتواهای حوزه ایمنی در ارتفاع در حال تولید نهایی است...")
@@ -145,11 +145,11 @@ else:
         n = r1c1.text_input("👤 نام و نام خانوادگی:")
         p = r1c2.text_input("📞 شماره تماس مستقیم:")
         
-        dept = st.selectbox("🎯 واحد سازمانی:", ["فنی و مهندسی", "HSSE", "مالی و انسانی", "ماشین‌آلات"])
+        dept = st.selectbox("🎯 واحد سازمانی:", ["فنی و مهندسی", "HSSE", "مالی و منابع انسانی", "ماشین‌آلات"])
         topic = st.text_input("📌 عنوان موضوع آموزشی:")
         script = st.text_area("📄 سناریو پیشنهادی یا شرح کامل چالش (آموزشی):", height=200)
         
-        if st.form_submit_button("🚀 تایید نهایی و ارسال به مدیریت تولید"):
+        if st.form_submit_button("🚀 تایید نهایی و ارسال به مدیریت تولید محتوا"):
             if n and p and script:
                 with st.spinner('در حال برقراری ارتباط با ایمیل...'):
                     res = send_professional_email(n, p, dept, topic, script)
@@ -157,7 +157,7 @@ else:
                         st.success(f"جناب {n} عزیز، درخواست شما ثبت شد و به زودی بررسی می‌گردد.")
                         st.balloons()
                     else: st.error(f"خطا در ارسال ایمیل: {res}")
-            else: st.warning("فیلدهای ضروری را تکمیل کن حاجی!")
+            else: st.warning("فیلدهای ضروری را تکمیل کن !")
 
 # ۷. فوتر
-st.markdown("<br><hr><div style='text-align:center; padding:15px; background:#0d47a1; color:white; border-radius:15px; font-weight:bold;'>واحد تحقیق و توسعه موسسه عاشورا - سامانه بازآفرینی دانش</div>", unsafe_allow_html=True)
+st.markdown("<br><hr><div style='text-align:center; padding:15px; background:#0d47a1; color:white; border-radius:15px; font-weight:bold;'>مرکز برنامه ریزی و توسعه موسسه عاشورا - سامانه مدیریت محتوا</div>", unsafe_allow_html=True)
