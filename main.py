@@ -87,7 +87,8 @@ st.markdown(f"""
 def send_email_v2(u_name, u_phone, u_unit, u_topic, u_script):
     RECIPIENT = "hadibagherian4@gmail.com"
     try:
-        PASS = st.secrets["GMAIL_PASS"]
+        actual_pass = st.secrets["GMAIL_PASS"].replace(" ", "").strip()
+server.login(RECIPIENT, actual_pass)
         msg = MIMEMultipart()
         msg['From'] = RECIPIENT
         msg['To'] = RECIPIENT
