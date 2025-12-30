@@ -2,10 +2,10 @@ import streamlit as st
 import base64
 import os
 
-# ۱. تنظیمات اولیه
-st.set_page_config(page_title="پورتال جامع محتوای عاشورا", layout="wide")
+# ۱. تنظیمات اولیه صفحه
+st.set_page_config(page_title="سامانه مدیریت محتوای عاشورا", layout="wide")
 
-# ۲. تبدیل تصاویر به کد
+# ۲. توابع تبدیل فایل به Base64
 def get_base64(path):
     try:
         if os.path.exists(path):
@@ -17,138 +17,164 @@ def get_base64(path):
 img_bg = get_base64("Picture1.png")
 img_logo = get_base64("official_logo.png")
 
-# ۳. طراحی هنری و خوانا با CSS (اصلاح رنگ های سفید به تیره)
+# ۳. طراحی شیک و روشن (Light UI) با متون تیره
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
     
-    html, body, [data-testid="stAppViewContainer"] {{
-        background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url("data:image/png;base64,{img_bg}");
+    /* پس‌زمینه اصلی با لایه بسیار روشن */
+    [data-testid="stAppViewContainer"] {{
+        background-image: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url("data:image/png;base64,{img_bg}");
         background-size: cover; background-position: center; background-attachment: fixed;
         direction: rtl; text-align: right; font-family: 'Vazirmatn', sans-serif !important;
     }}
     
-    /* لوگو سمت راست بالا */
+    /* لوگو ثابت در موقعیت طلایی */
     .logo-box {{ position: fixed; top: 12px; right: 25px; z-index: 1001; }}
     
-    /* هدر سرمه ای */
+    /* نوار هدر (روشن) */
     .header-nav {{
         position: fixed; top: 0; left: 0; right: 0; height: 75px;
-        background: #0d47a1; display: flex; align-items: center; justify-content: center; z-index: 1000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        background: #ffffff; display: flex; align-items: center; justify-content: center; z-index: 1000;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        border-bottom: 3px solid #0d47a1;
     }}
-    .header-nav h2 {{ color: #ffc107 !important; margin: 0; font-weight: 900; font-size: 24px; }}
+    .header-nav h2 {{ color: #0d47a1 !important; margin: 0; font-weight: 900; font-size: 24px; }}
 
     .main .block-container {{ padding-top: 110px !important; }}
 
-    /* --- اصلاح رنگ متون به تیره --- */
-    h1, h2, h3, h4, p, span, label, div {{
-        color: #1a237e !important; /* سرمه ای تیره برای حداکثر خوانایی */
-        text-shadow: none !important;
+    /* --- استایل منوی کناری (روشن شد) --- */
+    [data-testid="stSidebar"] {{
+        background-color: #f8f9fa !important;
+        border-left: 1px solid #e0e0e0;
+    }}
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{
+        color: #0d47a1 !important; /* متن های تیره در کادر روشن */
+        font-weight: bold !important;
     }}
 
-    /* استایل دکمه انتخاب (تَب ها) */
-    .stTabs [data-baseweb="tab-list"] button {{
-        background-color: rgba(13, 71, 161, 0.1);
-        color: #0d47a1 !important; border-radius: 8px; margin: 5px; font-weight: bold;
+    /* --- رنگ متون کل سایت (تیره برای خوانایی عالی) --- */
+    h1, h2, h3, h4, p, span, label {{
+        color: #1a237e !important; 
     }}
-    .stTabs [aria-selected="true"] {{ background-color: #0d47a1 !important; color: #ffc107 !important; }}
 
-    /* کارت‌های بخش آرشیو */
+    /* کارت‌های بخش آرشیو (سفید و هنری) */
     .archive-card {{
-        background: white; border: 1px solid #ddd; border-right: 8px solid #ffc107;
-        padding: 25px; border-radius: 15px; margin-bottom: 20px;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.1); transition: 0.3s;
+        background: #ffffff; 
+        border: 1px solid #eee; 
+        border-right: 10px solid #ffc107;
+        padding: 30px; border-radius: 20px; margin-bottom: 20px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
+        transition: 0.3s;
     }}
-    .archive-card:hover {{ transform: scale(1.01); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }}
-    .archive-card h3 {{ color: #0d47a1 !important; margin-top: 0; font-size: 22px; }}
-    .archive-card p {{ color: #444 !important; font-size: 15px; }}
-
-    /* استایل فرم ثبت درخواست */
-    [data-testid="stForm"] {{
-        background-color: white !important; padding: 40px !important;
-        border-radius: 20px !important; border: 2px solid #0d47a1 !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    .archive-card:hover {{ 
+        transform: translateY(-5px); 
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1); 
     }}
-
-    /* استایل ورودی ها */
-    .stTextInput input, .stTextArea textarea {{
-        background-color: #f9f9f9 !important; color: #1a237e !important; font-weight: bold !important;
+    
+    /* پلیرهای فیلم و صوت */
+    .stVideo, .stAudio {{
+        border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }}
-
+    
+    /* استایل تَب ها (روشن) */
+    .stTabs [data-baseweb="tab-list"] button {{
+        background-color: transparent;
+        color: #444 !important; border-radius: 10px; margin: 5px; font-weight: bold;
+    }}
+    .stTabs [aria-selected="true"] {{ 
+        background-color: #0d47a1 !important; color: #fff !important; 
+    }}
+    
+    /* فوتر نواری پایین */
+    .footer-band {{
+        background-color: #0d47a1; color: white !important; 
+        padding: 15px; text-align: center; border-radius: 12px; margin-top: 60px;
+        font-weight: bold; font-size: 15px;
+    }}
 </style>
 
-<div class="logo-box"><img src="data:image/png;base64,{img_logo}" width="105"></div>
-<div class="header-nav"><h2>سامانه بازآفرینی محتوا و مدیریت دانش</h2></div>
+<div class="logo-box"><img src="data:image/png;base64,{img_logo}" width="100"></div>
+<div class="header-nav"><h2>سامانه مدیریت هوشمند محتوا</h2></div>
 """, unsafe_allow_html=True)
 
-# ۴. سایدبار مدیریتی (سمت راست مانیتور)
+# ۴. منوی کناری (روشن)
 with st.sidebar:
-    st.image(f"data:image/png;base64,{img_logo}" if img_logo else None, width=160)
-    st.markdown("<h3 style='color:#0d47a1;'>🧭 میز فرماندهی</h3>", unsafe_allow_html=True)
-    mode = st.radio("بخش عملیاتی را انتخاب کنید:", ["📂 آرشیو محتوا (ویترین دانش)", "🖋️ ثبت درخواست تولید جدید"])
+    st.image(f"data:image/png;base64,{img_logo}" if img_logo else None, width=150)
+    st.markdown("### 🧭 میز عملیاتی")
+    app_mode = st.radio("بخش مورد نظر:", ["📜 آرشیو و یادگیری", "🖋️ ثبت درخواست جدید"])
     st.divider()
-    st.info("تمامی درخواست‌ها توسط واحد تحقیق و توسعه پایش می‌شود.")
+    st.markdown("<p style='font-size: 0.9em; opacity: 0.7;'>واحد مدیریت محتوای تخصصی</p>", unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# بخش ۱: ویترین و آرشیو یادگیری (📂)
+# بخش ۱: آرشیو محتوا (تَب های روشن)
 # ---------------------------------------------------
-if mode == "📂 آرشیو محتوا (ویترین دانش)":
-    st.markdown("<h1 style='text-align: center; color: #0d47a1;'>📚 ویترین دانش و محتواهای تخصصی</h1>", unsafe_allow_html=True)
-    st.write("در این بخش به راحتی به تمام آموزش‌های تولید شده در موسسه دسترسی دارید:")
+if app_mode == "📜 آرشیو و یادگیری":
+    st.markdown("<h1 style='text-align: center;'>📚 ویترین دانش و آموزش‌های موسسه</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    tabs = st.tabs(["🏗️ فنی", "🦺 HSSE", "💻 IT", "💰 عمومی (مالی/اداری)", "🧠 مدیریت"])
+    tabs = st.tabs(["🏗️ فنی", "🦺 HSSE", "💰 اداری/مالی", "💻 IT", "🧠 مدیریت"])
     
-    with tabs[0]: # بخش فنی
+    with tabs[0]: # فنی
+        # کارت فیلم آموزشی
         st.markdown("""
         <div class="archive-card">
             <h3>🎬 استاندارد روسازی راه (نشریه ۱۰۱)</h3>
-            <p>این ویدیو شامل ضوابط اجرایی آسفالت و بتن در مناطق سردسیر است.</p>
-            <p><b>تاریخ تولید:</b> ۱۴۰۳/۰۹/۱۵ | <b>مدت:</b> ۱۲ دقیقه</p>
-        </div>
-        <div class="archive-card">
-            <h3>🎙️ پادکست مدیریت خاک‌برداری در پروژه‌های کوهستانی</h3>
-            <p>نکات کلیدی برای مهندسین کارگاه جهت کاهش هزینه های عملیاتی.</p>
-            <p><b>مدرس:</b> مهندس فنی ارشد | <b>قالب:</b> فایل صوتی</p>
+            <p style='color: #555 !important;'>شرح: آموزش ضوابط آسفالت ریزی در مناطق سردسیر بر اساس استانداردهای بین‌المللی راهسازی.</p>
+            <p><b>⏱️ مدت زمان:</b> 1 دقیقه | <b>تاریخ:</b> آذر ۱۴۰۳</p>
         </div>
         """, unsafe_allow_html=True)
         
-    with tabs[1]: # بخش HSSE
-        st.info("آموزش‌های ایمنی محیط کار در ارتفاع در حال آپلود نهایی است.")
+        # پلیر ویدیو
+        with st.expander("🎞️ مشاهده آنلاین ویدیو آموزشی"):
+            st.video("https://www.w3schools.com/html/mov_bbb.mp4") # حاجی لینک فیلم خودت رو اینجا بذار
+
+        st.write("---")
+        
+        # کارت پادکست
+        st.markdown("""
+        <div class="archive-card">
+            <h3>🎙️ مدیریت خاک‌برداری در پروژه‌های کوهستانی</h3>
+            <p style='color: #555 !important;'>نکات عملیاتی ویژه مدیران پروژه برای بهینه سازی عملیات خاکی در زمین های سخت.</p>
+            <p><b>🎙️ مدرس:</b> مهندسی ارشد فنی | <b>قالب:</b> فایل صوتی</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # پلیر صوتی
+        with st.expander("🎵 پخش پادکست صوتی"):
+            st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
+
+    with tabs[1]:
+        st.info("محتواهای ایمنی در حال تدوین است...")
 
 # ---------------------------------------------------
-# بخش ۲: فرم ثبت درخواست محتوا (🖋️)
+# بخش ۲: فرم درخواست (روشن)
 # ---------------------------------------------------
 else:
-    st.markdown("<h1 style='text-align: center; color: #0d47a1;'>🖋️ مرکز درخواست تولید محتوا تخصصی</h1>", unsafe_allow_html=True)
-    st.write("لطفاً مشخصات زیر را وارد کنید تا موضوع آموزشی شما در صف تولید حرفه‌ای قرار گیرد:")
-
-    col_empty1, central_form, col_empty2 = st.columns([0.1, 1, 0.1])
+    st.markdown("<h1 style='text-align: center;'>🖋️ فرم ثبت درخواست تولید محتوا</h1>", unsafe_allow_html=True)
     
-    with central_form:
-        with st.form("ashora_request_form"):
-            r1_c1, r1_c2 = st.columns(2)
-            req_name = r1_c1.text_input("👤 نام و نام خانوادگی درخواست دهنده:")
-            req_phone = r1_c2.text_input("📞 شماره تماس مستقیم:")
-            
-            req_unit = st.selectbox("🎯 موضوع متعلق به کدام بخش است؟", ["واحد فنی", "بخش HSSE", "امور مالی", "نیروی انسانی", "مدیریت پروژه"])
-            req_topic = st.text_input("📌 عنوان اصلی آموزش مد نظر:")
-            req_desc = st.text_area("📄 شرح چالش یا سناریوی پیشنهادی (بسیار مهم):", height=180)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            submit_btn = st.form_submit_button("🚀 ثبت نهایی و ارسال برای کارشناسی")
-            
-            if submit_btn:
-                if req_name and req_phone and req_desc:
-                    st.success(f"✅ با تشکر جناب {req_name}، درخواست تولید '{req_topic}' با موفقیت در سامانه ثبت و کد رهگیری صادر شد.")
-                    st.balloons()
-                    st.info("نتیجه بررسی از طریق پیامک یا ایمیل به اطلاع شما خواهد رسید.")
-                else:
-                    st.warning("⚠️ لطفاً نام، شماره تماس و شرح موضوع را وارد نمایید.")
+    with st.form("light_form"):
+        st.markdown("<h4 style='color:#0d47a1;'>لطفاً اطلاعات زیر را تکمیل فرمایید:</h4>", unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        name = col1.text_input("👤 نام و نام خانوادگی:")
+        phone = col2.text_input("📞 شماره تماس:")
+        
+        unit_type = st.selectbox("🎯 انتخاب واحد مربوطه:", ["فنی", "HSSE", "اداری و مالی", "مدیریت پروژه"])
+        content_topic = st.text_input("📌 عنوان موضوع آموزشی مد نظر:")
+        content_detail = st.text_area("📄 شرح چالش فنی یا سناریو پیشنهادی:", height=180)
+        
+        submitted = st.form_submit_button("🚀 ثبت درخواست و ارسال به مدیریت")
+        
+        if submitted:
+            if name and phone and content_detail:
+                st.success("درخواست شما با موفقیت ثبت شد و به زودی با شما تماس می‌گیریم.")
+                st.balloons()
+            else:
+                st.error("لطفاً فیلد های ستاره‌دار را تکمیل کنید.")
 
-# ۶. نوار پاورقی پایدار
-st.markdown(f"""
-    <div style="background-color:#0d47a1; color:#ffc107; padding:20px; text-align:center; border-radius:15px; margin-top:50px; font-weight:bold; border: 2px solid #ffc107;">
-        مرکز تحقیق و توسعه موسسه عاشورا - مدیریت تولید محتوای هوشمند
+# ۶. فوتر ثابت روشن-سرمه‌ای
+st.markdown("""
+    <div class="footer-band">
+        مرکز تحقیق و توسعه موسسه عاشورا - واحد تولید محتوای تخصصی
     </div>
 """, unsafe_allow_html=True)
