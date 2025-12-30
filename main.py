@@ -3,118 +3,135 @@ import base64
 import os
 
 # ۱. تنظیمات اولیه صفحه
-st.set_page_config(page_title="پورتال هوشمند عاشورا", layout="wide")
+st.set_page_config(page_title="پورتال مهندسی محتوا عاشورا", layout="wide")
 
-# ۲. تابع تبدیل عکس محلی به فرمت قابل نمایش در CSS (Base64)
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+# ۲. تابع تبدیل عکس به فرمت CSS (Base64)
+def get_base64(bin_file):
+    if os.path.exists(bin_file):
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return ""
 
-# نام فایل‌های تو در گیت‌هاب (اگر تغییر دادی اینجا هم اصلاح کن)
-img_banner_top = "Picture1.tif" 
-img_logo_side = "ChatGPT Image Dec 27, 2025, 03_01_00 PM.png"
+# نام فایل‌های تو (اگر نام فایل لوگو را عوض کردی اینجا هم اصلاح کن)
+img_banner = "Picture1.tif"  # پیشنهاد: تبدیل به PNG برای کیفیت بهتر
+img_logo = "official_logo.png"
 
-# ۳. تزریق کدهای CSS برای بنرها و پس‌زمینه
-def set_style():
-    # بنر بالایی به صورت نواری
-    bin_str_top = ""
-    if os.path.exists(img_banner_top):
-        bin_str_top = get_base64_of_bin_file(img_banner_top)
+bin_str_logo = get_base64(img_logo)
+bin_str_banner = get_base64(img_banner)
 
-    st.markdown(f"""
+# ۳. تزریق کدهای CSS برای استایل‌دهی نهایی
+st.markdown(f"""
     <style>
-    /* فونت فارسی و استایل کلی */
-    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
     
-    .stApp {{
-        background-color: #f4f7f9;
+    html, body, [data-testid="stAppViewContainer"] {{
+        background-color: #f0f2f5;
         direction: rtl;
         text-align: right;
-    }}
-    
-    /* بنر بالایی - نواری */
-    .header-banner {{
-        background-image: linear-gradient(rgba(13, 71, 161, 0.6), rgba(13, 71, 161, 0.6)), url("data:image/tif;base64,{bin_str_top}");
-        background-size: cover;
-        background-position: center;
-        height: 180px;
-        border-radius: 0 0 50px 50px;
-        margin-top: -60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-    }}
-    
-    .header-banner h1 {{
-        font-size: 35px;
         font-family: 'Vazirmatn', sans-serif;
     }}
 
-    /* شخصی‌سازی سایدبار */
+    /* نوار هدر اصلی */
+    .header-banner {{
+        background-color: #5c85c1; /* رنگ آبی ملایم بر اساس اسکرین شات */
+        background-image: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url("data:image/tif;base64,{bin_str_banner}");
+        background-size: cover;
+        background-position: center;
+        height: 200px;
+        border-radius: 0 0 50px 50px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-top: -65px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }}
+
+    .logo-img {{
+        width: 100px;
+        margin-bottom: 10px;
+    }}
+
+    /* تنظیمات متون روی عکس */
+    .header-banner h1 {{
+        font-size: 40px;
+        font-weight: bold;
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        margin: 0;
+    }}
+
+    /* تنظیمات سایدبار */
     [data-testid="stSidebar"] {{
         background-color: #0d47a1;
         color: white;
-        direction: rtl;
     }}
-    
+
+    /* دکمه استخراج */
     .stButton>button {{
-        background-color: #ffc107;
-        color: #0d47a1;
+        background-color: #ffc107 !important;
+        color: #0d47a1 !important;
         font-weight: bold;
-        border-radius: 8px;
+        border-radius: 12px;
+        height: 45px;
+        width: 100%;
+        border: none;
     }}
-    </style>
-    <div class="header-banner">
-        <h1>سامانه مهندسی محتوا و مدیریت دانش</h1>
-    </div>
-    <br>
-    """, unsafe_allow_html=True)
 
-set_style()
-
-# ۴. سایدبار (منوی کناری)
-with st.sidebar:
-    if os.path.exists(img_logo_side):
-        st.image(img_logo_side, width=220)
-    st.divider()
-    st.markdown("### ⚙️ داشبورد مدیریت")
-    unit = st.selectbox("واحد مورد نظر:", ["فنی و مهندسی", "HSSE و ایمنی", "مالی", "ماشین‌آلات"])
-    st.write("خوش آمدید")
-
-# ۵. بدنه اصلی سایت
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.markdown("### 🖋️ ثبت چالش یا تجربه")
-    issue = st.text_area("جزئیات اتفاق را بنویسید:", height=200)
-    btn = st.button("🚀 استخراج سناریو")
-
-with col2:
-    st.markdown("### 📋 خروجی سیستم")
-    if btn:
-        if issue:
-            st.success(f"واحد {unit}: تحلیل در حال انجام...")
-            st.markdown(f"**چالش فنی:** {issue}\n\n**سناریوی ویدیویی پیشنهادی:** ۱. مستندسازی هوایی ۲. تحلیل خطای آیین نامه ۳. پاداش مولف")
-        else:
-            st.warning("لطفا متن را وارد کنید.")
-
-# ۶. بنر نواری پایینی (فوتر)
-st.markdown("""
-    <style>
-    .footer-strip {
+    /* فوتر نواری پایین */
+    .footer-strip {{
         background-color: #0d47a1;
         color: #ffc107;
-        padding: 10px;
+        padding: 15px;
         text-align: center;
+        font-weight: bold;
         border-radius: 10px;
         margin-top: 50px;
-        font-weight: bold;
-    }
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }}
+    
+    /* اصلاح رنگ برچسب‌های متنی */
+    h3, label, p {{
+        color: #1a237e !important;
+    }}
     </style>
+    
+    <div class="header-banner">
+        <img src="data:image/png;base64,{bin_str_logo}" class="logo-img">
+        <h1>سامانه مهندسی محتوا</h1>
+    </div>
+    <br>
+""", unsafe_allow_html=True)
+
+# ۴. بخش منوی کناری (سایدبار)
+with st.sidebar:
+    st.markdown("### 🛠️ ابزارهای مدیریتی")
+    unit = st.selectbox("واحد انتخابی:", ["فنی و مهندسی", "HSSE", "مالی و اداری", "ماشین‌آلات"])
+    st.divider()
+    st.write("پورتال مرکزی مدیریت دانش")
+
+# ۵. محتوای میانی سایت
+c1, c2 = st.columns(2)
+
+with c1:
+    st.markdown("### 🖋️ ثبت چالش یا تجربه")
+    issue = st.text_area("شرح واقعه یا موضوع تخصصی:", height=200, placeholder="جزئیات را اینجا وارد کنید...")
+    submit = st.button("🚀 استخراج سناریو و تحلیل")
+
+with c2:
+    st.markdown("### 📋 خروجی و سناریوی پیشنهادی")
+    if submit:
+        if issue:
+            st.info(f"واحد {unit}: تحلیل داده‌ها بر اساس نشریات آغاز شد...")
+            st.success(f"پیشنهاد نهایی: محتوا در قالب 'ویدیو کوتاه آموزشی' با تکیه بر تجربه چالش {issue[:20]}... تولید گردد.")
+            st.balloons()
+        else:
+            st.error("لطفاً شرح واقعه را وارد نمایید.")
+
+# ۶. فوتر اصلاح شده طبق درخواست شما
+st.markdown("""
     <div class="footer-strip">
-        مرکز تحقیق و توسعه موسسه عاشورا - مدیریت دانش سازمانی
+        مرکز تحقیق و توسعه موسسه عاشورا - مدیریت تولید محتوا
     </div>
 """, unsafe_allow_html=True)
