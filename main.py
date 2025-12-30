@@ -1,161 +1,138 @@
 import streamlit as st
 import base64
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# ۱. تنظیمات اولیه صفحه (تب بروزر و آیکون)
-st.set_page_config(
-    page_title="سامانه مهندسی محتوا | موسسه عاشورا",
-    layout="wide"
-)
+# تنظیمات پهنای صفحه
+st.set_page_config(page_title="سامانه جامع محتوای عاشورا", layout="wide")
 
-# ۲. تابع تبدیل عکس به base64 (برای استفاده در استایل‌های CSS)
-def img_to_base64(path):
-    try:
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except:
-        return ""
+# تابع تبدیل عکس به Base64 (لوگو و پس‌زمینه)
+def get_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
     return ""
 
-bg_base64 = img_to_base64("Picture1.png")
-logo_base64 = img_to_base64("official_logo.png")
+bin_bg = get_base64("Picture1.png")
+bin_logo = get_base64("official_logo.png")
 
-# ۳. جراحی ظاهر سایت با CSS حرفه‌ای
+# --- استایل CSS برای بک‌گراند و دیزاین سازمان ---
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
-
-html, body, [data-testid="stAppViewContainer"] {{
-    font-family: 'Vazirmatn', sans-serif !important;
-    direction: rtl;
-    text-align: right;
-}}
-
-/* بک‌گراند کل صفحه با لایه روشن برای خوانایی متن */
-[data-testid="stAppViewContainer"] {{
-    background-image: linear-gradient(
-        rgba(255,255,255,0.85),
-        rgba(255,255,255,0.85)
-    ), url("data:image/png;base64,{bg_base64}");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-}}
-
-/* نوار سرمه‌ای بالا (هدر ثابت) */
-.nav-bar {{
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 75px;
-    background-color: #0d47a1;
-    z-index: 998;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}}
-.nav-bar h2 {{ color: #ffc107; margin: 0; font-size: 28px; }}
-
-/* لوگوی گوشه سمت راست بالا */
-.logo-box {{
-    position: fixed;
-    top: 10px;
-    right: 30px;
-    z-index: 1001; /* باید بالاتر از هدر باشد */
-}}
-
-/* حاشیه کناری بدنه سایت */
-.main .block-container {{ padding-top: 110px !important; }}
-
-/* شبکه دکمه‌های هوش مصنوعی */
-.ai-grid {{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 30px;
-}}
-
-.ai-card {{
-    background: #ffffff;
-    padding: 15px;
-    border-radius: 12px;
-    text-align: center;
-    text-decoration: none !important;
-    color: #0d47a1 !important;
-    font-weight: bold;
-    border-right: 6px solid #ffc107;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transition: 0.3s ease-in-out;
-}}
-.ai-card:hover {{
-    background: #ffc107;
-    transform: translateY(-3px);
-}}
-
-/* استایل کادر ورود متن (کادر سیاه یا تیره سنتی را روشن‌تر و مدرن می‌کند) */
-textarea {{
-    border-radius: 10px !important;
-    border: 1px solid #ccc !important;
-    background-color: rgba(255,255,255,0.8) !important;
-}}
-
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+    html, body, [data-testid="stAppViewContainer"] {{
+        background-image: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)), url("data:image/png;base64,{bin_bg}");
+        background-size: cover; background-position: center; background-attachment: fixed;
+        direction: rtl; text-align: right; font-family: 'Vazirmatn', sans-serif !important;
+    }}
+    .logo-box {{ position: fixed; top: 10px; right: 25px; z-index: 1001; }}
+    .nav-bar {{ position: fixed; top: 0; left: 0; right: 0; height: 75px; background: #0d47a1; z-index: 1000; display: flex; align-items: center; justify-content: center; }}
+    .nav-bar h2 {{ color: #ffc107; margin: 0; font-size: 26px; }}
+    .main .block-container {{ padding-top: 110px !important; }}
+    .stButton>button {{ background: #0d47a1 !important; color: white !important; width: 100%; border-radius: 10px; font-weight: bold; }}
+    .content-card {{ background: white; padding: 20px; border-radius: 15px; border-right: 8px solid #ffc107; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }}
 </style>
-
-<div class="nav-bar">
-    <h2>سامانه مهندسی محتوا</h2>
-</div>
-
-<div class="logo-box">
-    <img src="data:image/png;base64,{logo_base64}" width="100" style="filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.3));">
-</div>
+<div class="nav-bar"><h2>سامانه مدیریت محتوای تخصصی موسسه عاشورا</h2></div>
+<div class="logo-box"><img src="data:image/png;base64,{bin_logo}" width="100"></div>
 """, unsafe_allow_html=True)
 
-# ۴. تنظیمات و انتخاب‌ها در سایدبار
+# تابع ارسال ایمیل
+def send_email(subject_text, body_html):
+    # تنظیمات جیمیل شما
+    my_email = "hadibagherian4@gmail.com"
+    # برای امنیت، باید App Password از گوگل بگیرید (در پایین توضیح داده شده)
+    password = "اینجا_رمز_برنامه_را_بگذارید" 
+    
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = my_email
+        msg['To'] = "hadibagherian4@gmail.com"
+        msg['Subject'] = "درخواست جدید تولید محتوا: " + subject_text
+        
+        msg.attach(MIMEText(body_html, 'html'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(my_email, password)
+        server.send_msg(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"خطا در ارسال: {e}")
+        return False
+
+# --- سایدبار برای جابه‌جایی بین بخش‌ها ---
 with st.sidebar:
-    st.markdown("### ⚙️ کنترل عملیات")
-    unit = st.selectbox("بخش اجرایی:", ["واحد فنی و مهندسی", "HSSE و ایمنی", "امور مالی", "ماشین‌آلات"])
-    c_type = st.selectbox("نوع محتوا:", ["کلیپ آموزشی", "پادکست صوتی", "بروشور", "موشن گرافیک"])
-    st.write("---")
-    st.caption("نسخه توسعه‌یافته برای مدیریت تولید محتوا")
+    st.image(f"data:image/png;base64,{bin_logo}" if bin_logo else None, width=150)
+    menu = st.radio("بخش مورد نظر:", ["📜 آرشیو محتواهای تولید شده", "🖋️ ثبت درخواست محتوا جدید"])
+    st.divider()
+    st.info("مرکز تحقیق و توسعه موسسه عاشورا")
 
-# ۵. ورودی در مرکز سایت
-col_side_r, col_mid, col_side_l = st.columns([0.5, 2, 0.5])
+# -----------------------------------
+# بخش ۱: آرشیو و ویترین محتوا
+# -----------------------------------
+if menu == "📜 آرشیو محتواهای تولید شده":
+    st.header("📚 ویترین آموزش‌های تخصصی موسسه")
+    category = st.tabs(["🏗️ فنی و مهندسی", "🦺 HSSE", "💰 عمومی (مالی/اداری)", "💻 IT", "🧠 مدیریت"])
 
-with col_mid:
-    st.markdown("### 🖋️ مرحله اول: طراحی سناریو")
-    topic = st.text_area(
-        "چالش مهندسی یا حادثه ایمنی را اینجا شرح دهید:",
-        height=180,
-        placeholder="جزئیات فنی را اینجا وارد کنید..."
-    )
+    with category[0]:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown('<div class="content-card"><h4>فیلم آموزشی روسازی راه</h4><p>استاندارد نشریه ۱۰۱</p><button>مشاهده محتوا</button></div>', unsafe_allow_html=True)
+        with col2:
+            st.markdown('<div class="content-card"><h4>نحوه کار با نرم‌افزار عمرانی</h4><p>تخصصی بخش فنی</p><button>مشاهده محتوا</button></div>', unsafe_allow_html=True)
 
-    if st.button("🚀 تایید و نهایی‌سازی سناریو"):
-        if topic.strip():
-            st.success("✅ سناریوی شما تایید و به واحد هوش مصنوعی ابلاغ شد.")
-            st.code(f"نقش: مهندس متخصص موسسه عاشورا\nسناریوی {c_type} در خصوص موضوع '{topic}' در واحد {unit} بر اساس استاندارد نشریات ۵۰۰ گام‌به‌گام طراحی شود.", language="markdown")
+    with category[1]:
+        st.info("محتواهای حوزه ایمنی در این بخش بارگذاری می‌شود...")
+
+# -----------------------------------
+# بخش ۲: فرم ثبت درخواست جدید
+# -----------------------------------
+else:
+    st.header("📝 فرم پیشنهاد تولید محتوا تخصصی")
+    
+    with st.container():
+        col_r, col_l = st.columns(2)
+        with col_r:
+            name = st.text_input("نام و نام خانوادگی متقاضی:")
+            phone = st.text_input("شماره تماس همراه:")
+            unit = st.selectbox("واحد مربوطه:", ["فنی", "HSSE", "مالی", "نیروی انسانی", "IT", "مدیریت"])
+        with col_l:
+            title = st.text_input("عنوان پروژه/موضوع:")
+            level = st.radio("سطح دسترسی پیشنهادی:", ["عادی", "محرمانه"])
+            date = st.date_input("تاریخ پیشنهاد")
+
+        gap = st.text_area("خلاصه شکاف دانشی (کدام مسئله قرار است حل شود؟)")
+        
+        st.write("الزامات تکنولوژیک:")
+        ai = st.checkbox("استفاده از هوش مصنوعی (AI)")
+        ar = st.checkbox("واقعیت افزوده (AR/VR)")
+
+    if st.button("🚀 ارسال درخواست به مرکز تولید"):
+        if name and phone and gap:
+            # آماده سازی محتوای ایمیل
+            email_body = f"""
+            <html>
+            <body dir="rtl">
+                <h3>درخواست تولید محتوای جدید از سوی: {name}</h3>
+                <p><b>تلفن:</b> {phone}</p>
+                <p><b>واحد:</b> {unit}</p>
+                <p><b>عنوان موضوع:</b> {title}</p>
+                <p><b>شرح مسئله:</b> {gap}</p>
+                <hr>
+                <p>تکنولوژی ها: AI={ai} | AR={ar}</p>
+            </body>
+            </html>
+            """
+            st.toast("در حال ارسال درخواست...")
+            # st.success("پیام شما با موفقیت برای مدیریت ارسال شد و در نوبت تولید قرار گرفت.")
+            # برای اجرای واقعی ایمیل، فیلد رمز باید پر شود.
+            st.info("پیش‌نمایش فرم آماده است. (جهت اتصال به ایمیل شخصی شما، نیاز به تایید نهایی رمز برنامه گوگل است)")
             st.balloons()
         else:
-            st.error("حاجی، اول باید موضوع رو بنویسی!")
+            st.error("لطفاً فیلد نام، شماره تماس و شرح مسئله را پر کنید.")
 
-# ۶. بخش دکمه‌های ابزار هوشمند (زیر کادر ورودی)
-st.write("---")
-st.markdown("### 🤖 مرحله دوم: انتخاب ابزار هوش مصنوعی جهت تولید")
-st.markdown("""
-<div class="ai-grid">
-    <a class="ai-card" href="https://chatgpt.com/" target="_blank">💬 ویرایش متن (ChatGPT)</a>
-    <a class="ai-card" href="https://aistudio.google.com/" target="_blank">🧠 تحلیل اسناد (Gemini AI)</a>
-    <a class="ai-card" href="https://hailuoai.video/" target="_blank">🎬 تولید فیلم (Hailuo)</a>
-    <a class="ai-card" href="https://app.heygen.com/" target="_blank">🎭 ساخت آواتار (HeyGen)</a>
-    <a class="ai-card" href="https://elevenlabs.io/" target="_blank">🎙️ شبیه ساز صدا (ElevenLabs)</a>
-    <a class="ai-card" href="https://www.canva.com/" target="_blank">🎨 طراحی گرافیک (Canva)</a>
-</div>
-""", unsafe_allow_html=True)
-
-# ۷. فوتر شیک و پهن
-st.markdown("""
-<br><br><br>
-<div style="background-color:#0d47a1; color:#ffc107; padding:20px; text-align:center; border-radius:15px; font-weight:bold; border: 1px solid #ffc107;">
-مرکز تحقیق و توسعه موسسه عاشورا - مدیریت تولید محتوای تخصصی
-</div>
-""", unsafe_allow_html=True)
+# فوتر
+st.markdown("<hr><div style='text-align:center'>مرکز تحقیق و توسعه موسسه عاشورا - مدیریت تولید محتوا</div>", unsafe_allow_html=True)
