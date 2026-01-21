@@ -1,12 +1,150 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
-import '../data/fake_db.dart';
-import '../models/comment.dart';
-import '../models/referee_profile.dart';
-import '../models/submission.dart';
-import '../widgets/app_header.dart';
-import '../widgets/primary_button.dart';
+void main() {
+  runApp(const NexaApp());
+}
+
+// =====================
+// Models (دیتا)
+// =====================
+class Comment {
+  String id;
+  String user;
+  String text;
+  Comment({required this.id, required this.user, required this.text});
+}
+
+class Submission {
+  String id;
+  String title;
+  String description;
+  String sender;
+  String format;
+  String field;
+  String imgPath;
+
+  /// 'pending', 'waiting_referee', 'correction_needed', 'published'
+  String status;
+
+  int score;
+  int likes;
+  int views;
+
+  String knowledgeCode;
+  String refereeFeedback;
+  String assignedRefereePhone;
+
+  List<Comment> comments;
+
+  Submission({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.sender,
+    required this.format,
+    required this.field,
+    required this.imgPath,
+    this.status = "pending",
+    this.score = 0,
+    this.likes = 0,
+    this.views = 0,
+    this.knowledgeCode = "",
+    this.refereeFeedback = "",
+    this.assignedRefereePhone = "",
+    required this.comments,
+  });
+}
+
+class RefereeProfile {
+  String firstName;
+  String lastName;
+  String phone;
+  String nationalId;
+  String field;
+
+  RefereeProfile({
+    required this.firstName,
+    required this.lastName,
+    required this.phone,
+    required this.nationalId,
+    required this.field,
+  });
+}
+
+// =====================
+// Fake DB (حافظه)
+// =====================
+class FakeDb {
+  static List<RefereeProfile> referees = [
+    RefereeProfile(
+      firstName: "استاد",
+      lastName: "نمونه",
+      phone: "0912",
+      nationalId: "123",
+      field: "۲. حوزه فنی و مهندسی",
+    ),
+  ];
+
+  static List<Submission> submissions = [
+    Submission(
+      id: "s1",
+      title: "بهسازی زیرسازی آزادراه",
+      description: "سناریوی اصلاح لایه بیس",
+      sender: "واحد مهندسی",
+      format: "PDF",
+      field: "۱۳. حوزه آسفالت",
+      imgPath: "assets/highway_site.jpg",
+      status: "published",
+      likes: 25,
+      views: 500,
+      comments: [],
+      knowledgeCode: "A-1301",
+    ),
+    Submission(
+      id: "s2",
+      title: "اصلاح روش اجرای بتن‌ریزی",
+      description: "پیشنهاد بهبود فرآیند ویبره و کیورینگ",
+      sender: "کارگاه نمونه",
+      format: "DOCX",
+      field: "۶. حوزه بتن",
+      imgPath: "assets/highway_site.jpg",
+      status: "pending",
+      likes: 2,
+      views: 40,
+      comments: [],
+    ),
+  ];
+
+  static int _id = 100;
+  static String nextId() => "s${_id++}";
+}
+
+// =====================
+// App
+// =====================
+class NexaApp extends StatelessWidget {
+  const NexaApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'نکسا (NEXA)',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        scaffoldBackgroundColor: Colors.white,
+        primaryColor: const Color(0xFF002d5b),
+        fontFamily: 'Tahoma',
+        useMaterial3: true,
+      ),
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
+      home: const NexaSystemNavigator(),
+    );
+  }
+}
 
 class NexaSystemNavigator extends StatefulWidget {
   const NexaSystemNavigator({super.key});
@@ -22,7 +160,9 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
   String loginId = "";
   int navIdx = 0;
 
-  final fieldCommittees = const [
+  String loggedInRefereePhone = ""; // برای پنل داور
+
+  final List<String> fieldCommittees = const [
     "۱. حوزه معماری و منظر",
     "۲. حوزه فنی و مهندسی",
     "۳. حوزه برنامه‌ریزی و مدیریت پروژه",
@@ -39,7 +179,7 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
     "۱۴. حوزه مالی و حسابداری",
   ];
 
-  final universityMajors = const [
+  final List<String> universityMajors = const [
     "عمران",
     "معماری",
     "مکانیک",
@@ -50,65 +190,131 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
     "حقوق",
   ];
 
-  final pName = TextEditingController();
-  final pId = TextEditingController();
-  final pMob = TextEditingController();
+  // پروفایل (دمو)
+  final _pName = TextEditingController();
+  final _pId = TextEditingController();
+  final _pMob = TextEditingController();
 
-  void resetApp() => setState(() {
+  // فرم ارسال محتوا (دمو)
+  final _subTitle = TextEditingController();
+  final _subDesc = TextEditingController();
+  String _selectedField = "۲. حوزه فنی و مهندسی";
+  String _pickedFileName = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedField = fieldCommittees.first;
+  }
+
+  @override
+  void dispose() {
+    _pName.dispose();
+    _pId.dispose();
+    _pMob.dispose();
+    _subTitle.dispose();
+    _subDesc.dispose();
+    super.dispose();
+  }
+
+  void _resetApp() => setState(() {
         currentStep = "welcome";
         userRole = "guest";
         navIdx = 0;
         loginPhone = "";
         loginId = "";
+        loggedInRefereePhone = "";
       });
 
   @override
-  void dispose() {
-    pName.dispose();
-    pId.dispose();
-    pMob.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    switch (currentStep) {
-      case "welcome":
-        return buildWelcome();
-      case "login":
-        return buildLogin();
-      case "verify":
-        return buildVerify();
-      default:
-        return buildDashboard();
-    }
+    if (currentStep == "welcome") return _buildWelcome();
+    if (currentStep == "login") return _buildLogin();
+    if (currentStep == "verify") return _buildVerify();
+    return _buildDashboard();
   }
 
-  Widget buildWelcome() => Scaffold(
-        body: Column(
+  // =====================
+  // UI Pieces
+  // =====================
+  Widget _appHeader(String sub) => Container(
+        width: double.infinity,
+        color: const Color(0xFF002d5b),
+        padding: const EdgeInsets.only(top: 60, bottom: 25),
+        child: Column(
           children: [
-            const AppHeader(subtitle: "ورود به سامانه پایش تخصصی محتوا"),
-            Padding(
-              padding: const EdgeInsets.all(25),
-              child: Column(
-                children: [
-                  const Text(
-                    "لطفاً نوع کاربری خود را تعیین کنید:",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
-                  const SizedBox(height: 25),
-                  roleBtn("کاربر عادی (پرسنل اجرایی)", "user"),
-                  roleBtn("داور تخصصی / نخبگان دانشی", "referee"),
-                  roleBtn("مدیر سامانه", "manager"),
-                ],
-              ),
+            Image.asset(
+              "assets/logo.png",
+              height: 70,
+              errorBuilder: (c, e, s) =>
+                  const Icon(Icons.star, color: Colors.white, size: 50),
             ),
+            const Text(
+              'نکسا (NEXA)',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900),
+            ),
+            const Text('نظام یکپارچه محتوا عاشورا',
+                style: TextStyle(color: Colors.white70, fontSize: 10)),
+            const SizedBox(height: 10),
+            Text(sub, style: const TextStyle(color: Colors.white54, fontSize: 13))
           ],
         ),
       );
 
-  Widget roleBtn(String title, String role) => Padding(
+  Widget _lbl(String t) => Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          t,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      );
+
+  Widget _primaryBtn(String t, VoidCallback p, {double? width}) => SizedBox(
+        width: width ?? double.infinity,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF007bff),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          onPressed: p,
+          child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      );
+
+  // =====================
+  // Auth Flow
+  // =====================
+  Widget _buildWelcome() => Scaffold(
+        body: Column(
+          children: [
+            _appHeader("ورود به سامانه پایش تخصصی محتوا"),
+            Padding(
+              padding: const EdgeInsets.all(25),
+              child: Column(
+                children: [
+                  const Text("لطفاً نوع کاربری خود را تعیین کنید:",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.black)),
+                  const SizedBox(height: 25),
+                  _roleBtn("کاربر عادی (پرسنل اجرایی)", "user"),
+                  _roleBtn("داور تخصصی / نخبگان دانشی", "referee"),
+                  _roleBtn("مدیر سامانه", "manager"),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+
+  Widget _roleBtn(String t, String r) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -118,66 +324,65 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             minimumSize: const Size(double.infinity, 55),
           ),
           onPressed: () => setState(() {
-            userRole = role;
+            userRole = r;
             currentStep = "login";
           }),
-          child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
       );
 
-  Widget buildLogin() => Scaffold(
+  Widget _buildLogin() => Scaffold(
         body: Padding(
           padding: const EdgeInsets.all(30),
           child: Column(
             children: [
               const SizedBox(height: 80),
-              lbl("شماره همراه فعال سامانه :"),
+              _lbl("شماره همراه فعال سامانه :"),
               TextField(
                 onChanged: (v) => loginPhone = v,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
               const SizedBox(height: 15),
-              lbl("کد ملی کاربر (رمز ورود) :"),
+              _lbl("کد ملی کاربر (رمز ورود) :"),
               TextField(
                 onChanged: (v) => loginId = v,
                 obscureText: true,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
               const SizedBox(height: 25),
-              PrimaryButton(
-                title: "درخواست کد تایید هویت",
-                onPressed: () => setState(() => currentStep = "verify"),
-              ),
+              _primaryBtn("درخواست کد تایید هویت",
+                  () => setState(() => currentStep = "verify"))
             ],
           ),
         ),
       );
 
-  Widget buildVerify() => Scaffold(
+  Widget _buildVerify() => Scaffold(
         body: Center(
-          child: PrimaryButton(
-            title: "تایید و ورود نهایی",
-            width: 250,
-            onPressed: handleFinalLogin,
-          ),
+          child: _primaryBtn("تایید و ورود نهایی", _handleFinalLogin, width: 250),
         ),
       );
 
-  void handleFinalLogin() {
+  void _handleFinalLogin() {
     if (userRole == "referee") {
-      final ok = FakeDb.referees.any(
-          (r) => r.phone == loginPhone.trim() && r.nationalId == loginId.trim());
+      final ok = FakeDb.referees.any((r) =>
+          r.phone.trim() == loginPhone.trim() &&
+          r.nationalId.trim() == loginId.trim());
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("هویت داوری شما توسط مدیر ثبت نشده است")),
         );
         return;
       }
+      loggedInRefereePhone = loginPhone.trim();
     }
     setState(() => currentStep = "main");
   }
 
-  Widget buildDashboard() {
+  // =====================
+  // Dashboard
+  // =====================
+  Widget _buildDashboard() {
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -190,12 +395,11 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
         actions: [
           IconButton(
-            onPressed: resetApp,
-            icon: const Icon(Icons.logout, color: Colors.red),
-          )
+              onPressed: _resetApp,
+              icon: const Icon(Icons.logout, color: Colors.red))
         ],
       ),
-      body: buildPage(),
+      body: _buildPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navIdx,
         selectedItemColor: const Color(0xFF002d5b),
@@ -204,31 +408,25 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "میز کار"),
           BottomNavigationBarItem(
               icon: Icon(Icons.forum_outlined), label: "تالار گفتگو"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person_pin), label: "پروفایل"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_pin), label: "پروفایل"),
         ],
       ),
     );
   }
 
-  Widget buildPage() {
-    if (navIdx == 1) return buildChatForum();
-    if (navIdx == 2) return buildProfileEditor();
+  Widget _buildPage() {
+    if (navIdx == 1) return _buildChatForum();
+    if (navIdx == 2) return _buildProfileEditor();
 
-    switch (userRole) {
-      case "user":
-        return buildUserWorkbench();
-      case "manager":
-        return buildManagerWorkbench();
-      case "referee":
-        return buildRefereeWorkbench();
-      default:
-        return const Center(child: Text("نقش کاربری نامشخص است"));
-    }
+    if (userRole == "user") return _buildUserWorkbench();
+    if (userRole == "manager") return _buildManagerWorkbench();
+    return _buildRefereeWorkbench();
   }
 
-  // ---------------- USER ----------------
-  Widget buildUserWorkbench() => DefaultTabController(
+  // =====================
+  // USER Workbench
+  // =====================
+  Widget _buildUserWorkbench() => DefaultTabController(
         length: 4,
         child: Column(
           children: [
@@ -246,10 +444,10 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             Expanded(
               child: TabBarView(
                 children: [
-                  buildShowcase(),
-                  buildSubmitForm(),
-                  buildTracking(),
-                  buildUniversityList(),
+                  _buildShowcase(),
+                  _buildSubmitForm(),
+                  _buildTracking(),
+                  _buildUniversityList(),
                 ],
               ),
             )
@@ -257,12 +455,12 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
       );
 
-  Widget buildShowcase() => ListView.builder(
+  Widget _buildShowcase() => ListView.builder(
         itemCount: FakeDb.submissions.length,
-        itemBuilder: (c, i) => buildContentCard(FakeDb.submissions[i]),
+        itemBuilder: (c, i) => _buildContentCard(FakeDb.submissions[i]),
       );
 
-  Widget buildContentCard(Submission s) => Card(
+  Widget _buildContentCard(Submission s) => Card(
         margin: const EdgeInsets.all(15),
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
@@ -283,18 +481,19 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
               ),
             ),
             ListTile(
-              title: Text(s.title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black)),
-              subtitle: Text("${s.field} | کد دانشی: ${s.knowledgeCode}"),
+              title: Text(
+                s.title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              subtitle: Text("${s.field} | وضعیت: ${_statusFa(s.status)}"),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Row(
                 children: [
                   IconButton(
-                    icon:
-                        const Icon(Icons.favorite_border, color: Colors.red),
+                    icon: const Icon(Icons.favorite_border, color: Colors.red),
                     onPressed: () => setState(() => s.likes++),
                   ),
                   Text(" پسندیدن (${s.likes})",
@@ -302,7 +501,7 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
                           fontWeight: FontWeight.bold, fontSize: 11)),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => openComments(s),
+                    onPressed: () => _openComments(s),
                     child: const Text("نظرات",
                         style: TextStyle(fontWeight: FontWeight.bold)),
                   )
@@ -313,7 +512,7 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
       );
 
-  void openComments(Submission s) {
+  void _openComments(Submission s) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -358,12 +557,14 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             ),
             TextField(
               decoration: const InputDecoration(
-                hintText: "درج دیدگاه نخبگان...",
+                hintText: "درج دیدگاه...",
                 border: OutlineInputBorder(),
               ),
               onSubmitted: (v) {
+                if (v.trim().isEmpty) return;
                 setState(() {
-                  s.comments.add(Comment(id: "x", user: "همکار پروژه", text: v));
+                  s.comments.add(
+                      Comment(id: "c${DateTime.now().millisecondsSinceEpoch}", user: "کاربر", text: v));
                 });
                 Navigator.pop(c);
               },
@@ -375,44 +576,64 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
     );
   }
 
-  Widget buildSubmitForm() => SingleChildScrollView(
+  Widget _buildSubmitForm() => SingleChildScrollView(
         padding: const EdgeInsets.all(25),
         child: Column(
           children: [
-            const TextField(
-              decoration:
-                  InputDecoration(labelText: "عنوان سناریو / محتوای فنی"),
+            TextField(
+              controller: _subTitle,
+              decoration: const InputDecoration(
+                labelText: "عنوان سناریو / محتوای فنی",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _subDesc,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: "توضیحات",
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "حوزه تخصصی پیشنهادی"),
+              decoration: const InputDecoration(
+                labelText: "حوزه تخصصی پیشنهادی",
+                border: OutlineInputBorder(),
+              ),
+              value: _selectedField,
               items: fieldCommittees
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
-              onChanged: (_) {},
+              onChanged: (v) => setState(() => _selectedField = v ?? _selectedField),
             ),
             const SizedBox(height: 15),
-            filePickerField(),
-            const SizedBox(height: 30),
-            PrimaryButton(
-              title: "ثبت نهایی و ارسال به سازمان",
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("با موفقیت ثبت گردید")),
-                );
-              },
+            _filePickerField(),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                _pickedFileName.isEmpty ? "فایلی انتخاب نشده" : "فایل: $_pickedFileName",
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
             ),
+            const SizedBox(height: 20),
+            _primaryBtn("ثبت نهایی و ارسال به سازمان", _submitNewContent),
           ],
         ),
       );
 
-  Widget filePickerField() => InkWell(
+  Widget _filePickerField() => InkWell(
         onTap: () async {
           final res = await FilePicker.platform.pickFiles();
-          if (res != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("فایل با موفقیت بارگذاری شد.")),
-            );
+          if (res != null && res.files.isNotEmpty) {
+            setState(() => _pickedFileName = res.files.first.name);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("فایل با موفقیت انتخاب شد.")),
+              );
+            }
           }
         },
         child: Container(
@@ -432,16 +653,54 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
       );
 
-  Widget buildTracking() => ListView.builder(
-        itemCount: 1,
-        itemBuilder: (c, i) => const ListTile(
-          title: Text("طرح: بهسازی لایه ها"),
-          subtitle: Text("وضعیت: در حال ارزیابی کمیته تخصصی"),
-          trailing: Icon(Icons.timer),
-        ),
+  void _submitNewContent() {
+    if (_subTitle.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("عنوان را وارد کنید")),
       );
+      return;
+    }
 
-  Widget buildUniversityList() => ListView.builder(
+    final s = Submission(
+      id: FakeDb.nextId(),
+      title: _subTitle.text.trim(),
+      description: _subDesc.text.trim(),
+      sender: "کاربر",
+      format: _pickedFileName.isEmpty ? "N/A" : _pickedFileName,
+      field: _selectedField,
+      imgPath: "assets/highway_site.jpg",
+      status: "pending",
+      comments: [],
+    );
+
+    setState(() {
+      FakeDb.submissions.insert(0, s);
+      _subTitle.clear();
+      _subDesc.clear();
+      _pickedFileName = "";
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("با موفقیت ثبت شد و در صف بررسی قرار گرفت ✅")),
+    );
+  }
+
+  Widget _buildTracking() {
+    final my = FakeDb.submissions.where((s) => s.sender == "کاربر").toList();
+    if (my.isEmpty) {
+      return const Center(child: Text("هنوز چیزی ارسال نکردی."));
+    }
+    return ListView.builder(
+      itemCount: my.length,
+      itemBuilder: (c, i) => ListTile(
+        title: Text(my[i].title),
+        subtitle: Text("وضعیت: ${_statusFa(my[i].status)}"),
+        trailing: const Icon(Icons.timer),
+      ),
+    );
+  }
+
+  Widget _buildUniversityList() => ListView.builder(
         itemCount: universityMajors.length,
         itemBuilder: (c, i) => Card(
           child: ListTile(
@@ -451,8 +710,10 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
       );
 
-  // ---------------- MANAGER ----------------
-  Widget buildManagerWorkbench() => DefaultTabController(
+  // =====================
+  // MANAGER Workbench
+  // =====================
+  Widget _buildManagerWorkbench() => DefaultTabController(
         length: 2,
         child: Column(
           children: [
@@ -466,18 +727,8 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             Expanded(
               child: TabBarView(
                 children: [
-                  ListView.builder(
-                    itemCount: 2,
-                    itemBuilder: (c, i) => ListTile(
-                      title: const Text("سناریو فنی تثبیت روسازی"),
-                      subtitle: const Text("فرستنده: کارگاه ساوه | منتظر ارجاع"),
-                      trailing: ElevatedButton(
-                        onPressed: showReferralDialog,
-                        child: const Text("بررسی و ارجاع"),
-                      ),
-                    ),
-                  ),
-                  addRefereeForm(),
+                  _buildManagerReferralDesk(),
+                  _addRefereeForm(),
                 ],
               ),
             )
@@ -485,71 +736,287 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
         ),
       );
 
-  void showReferralDialog() {
+  Widget _buildManagerReferralDesk() {
+    final pending = FakeDb.submissions.where((s) => s.status == "pending").toList();
+    if (pending.isEmpty) {
+      return const Center(child: Text("موردی برای ارجاع وجود ندارد."));
+    }
+
+    return ListView.builder(
+      itemCount: pending.length,
+      itemBuilder: (c, i) {
+        final s = pending[i];
+        return ListTile(
+          title: Text(s.title),
+          subtitle: Text("فرستنده: ${s.sender} | حوزه: ${s.field}"),
+          trailing: ElevatedButton(
+            onPressed: () => _showReferralDialog(s),
+            child: const Text("بررسی و ارجاع"),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReferralDialog(Submission sub) {
+    RefereeProfile? selected = FakeDb.referees.isNotEmpty ? FakeDb.referees.first : null;
+
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text("ارجاع به کمیته و داور:"),
+        title: const Text("ارجاع به داور:"),
         content: DropdownButton<RefereeProfile>(
           isExpanded: true,
+          value: selected,
           items: FakeDb.referees
-              .map(
-                (r) => DropdownMenuItem(
-                  value: r,
-                  child: Text("${r.firstName} ${r.lastName} - ${r.field}"),
-                ),
-              )
+              .map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text("${r.firstName} ${r.lastName} - ${r.field}"),
+                  ))
               .toList(),
-          onChanged: (v) {
-            Navigator.pop(c);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("به نخبگان حوزه مربوطه ارجاع شد.")),
-            );
-          },
+          onChanged: (v) => selected = v,
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text("لغو"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (selected == null) return;
+              setState(() {
+                sub.status = "waiting_referee";
+                sub.assignedRefereePhone = selected!.phone;
+              });
+              Navigator.pop(c);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("ارجاع انجام شد ✅")),
+              );
+            },
+            child: const Text("ارجاع"),
+          )
+        ],
       ),
     );
   }
 
-  Widget addRefereeForm() => SingleChildScrollView(
+  Widget _addRefereeForm() => SingleChildScrollView(
         padding: const EdgeInsets.all(25),
         child: Column(
           children: [
-            const Text("تعریف داور فنی (صدور اجازه ورود)"),
-            const TextField(decoration: InputDecoration(labelText: "نام نخبگان")),
-            const TextField(decoration: InputDecoration(labelText: "شماره همراه")),
-            const TextField(
-                decoration: InputDecoration(labelText: "کد ملی (ID ورود)")),
+            const Text("تعریف داور فنی (صدور اجازه ورود)",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: "نام",
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => _tmpRefFirst = v,
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: "نام خانوادگی",
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => _tmpRefLast = v,
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: "شماره همراه",
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => _tmpRefPhone = v,
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: "کد ملی (ID ورود)",
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) => _tmpRefNid = v,
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: "حوزه تخصصی",
+                border: OutlineInputBorder(),
+              ),
+              value: _tmpRefField,
+              items: fieldCommittees
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) => setState(() => _tmpRefField = v ?? _tmpRefField),
+            ),
             const SizedBox(height: 20),
-            PrimaryButton(
-              title: "تایید و ساخت پنل نخبگان",
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("داور جدید با موفقیت ثبت شد")),
-                );
-              },
+            _primaryBtn("تایید و ساخت پنل نخبگان", _saveReferee),
+          ],
+        ),
+      );
+
+  String _tmpRefFirst = "";
+  String _tmpRefLast = "";
+  String _tmpRefPhone = "";
+  String _tmpRefNid = "";
+  String _tmpRefField = "۲. حوزه فنی و مهندسی";
+
+  void _saveReferee() {
+    if (_tmpRefPhone.trim().isEmpty || _tmpRefNid.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("شماره همراه و کد ملی الزامی است")),
+      );
+      return;
+    }
+    setState(() {
+      FakeDb.referees.add(
+        RefereeProfile(
+          firstName: _tmpRefFirst.trim().isEmpty ? "داور" : _tmpRefFirst.trim(),
+          lastName: _tmpRefLast.trim().isEmpty ? "جدید" : _tmpRefLast.trim(),
+          phone: _tmpRefPhone.trim(),
+          nationalId: _tmpRefNid.trim(),
+          field: _tmpRefField,
+        ),
+      );
+      _tmpRefFirst = "";
+      _tmpRefLast = "";
+      _tmpRefPhone = "";
+      _tmpRefNid = "";
+      _tmpRefField = fieldCommittees.first;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("داور جدید با موفقیت ثبت شد ✅")),
+    );
+  }
+
+  // =====================
+  // REFEREE Workbench
+  // =====================
+  Widget _buildRefereeWorkbench() => DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const TabBar(
+              labelColor: Color(0xFF002d5b),
+              tabs: [
+                Tab(text: "ارجاع‌شده به من"),
+                Tab(text: "بازخورد / نتیجه"),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildRefereeInbox(),
+                  _buildRefereeActions(),
+                ],
+              ),
             )
           ],
         ),
       );
 
-  // ---------------- REFEREE (placeholder) ----------------
-  Widget buildRefereeWorkbench() => const Center(
-        child: Text(
-          "پنل داور (در نسخه گیت‌هابی تفکیک‌شده)\n"
-          "— این بخش را در قدم بعدی دقیقاً مثل منطق شما کامل می‌کنم —",
-          textAlign: TextAlign.center,
-        ),
-      );
+  Submission? _selectedForReferee;
 
-  // ---------------- COMMON ----------------
-  Widget buildChatForum() => Column(
+  Widget _buildRefereeInbox() {
+    final mine = FakeDb.submissions
+        .where((s) => s.assignedRefereePhone == loggedInRefereePhone)
+        .toList();
+
+    if (mine.isEmpty) {
+      return const Center(
+        child: Text("فعلاً چیزی به شما ارجاع نشده."),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: mine.length,
+      itemBuilder: (c, i) => ListTile(
+        title: Text(mine[i].title),
+        subtitle: Text("وضعیت: ${_statusFa(mine[i].status)}"),
+        trailing: ElevatedButton(
+          onPressed: () => setState(() => _selectedForReferee = mine[i]),
+          child: const Text("انتخاب"),
+        ),
+      ),
+    );
+  }
+
+  final _refFeedbackCtrl = TextEditingController();
+
+  Widget _buildRefereeActions() {
+    final s = _selectedForReferee;
+    if (s == null) {
+      return const Center(child: Text("یک مورد را از تب «ارجاع‌شده به من» انتخاب کن."));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text("عنوان: ${s.title}", style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Align(
+              alignment: Alignment.centerRight,
+              child: Text("توضیحات: ${s.description}")),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: "نتیجه بررسی",
+              border: OutlineInputBorder(),
+            ),
+            value: s.status,
+            items: const [
+              DropdownMenuItem(value: "waiting_referee", child: Text("در حال بررسی")),
+              DropdownMenuItem(value: "correction_needed", child: Text("نیاز به اصلاح")),
+              DropdownMenuItem(value: "published", child: Text("تایید و انتشار")),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => s.status = v);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _refFeedbackCtrl..text = s.refereeFeedback,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: "بازخورد داور",
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (v) => s.refereeFeedback = v,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            decoration: const InputDecoration(
+              labelText: "کد دانشی (اختیاری)",
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (v) => s.knowledgeCode = v,
+          ),
+          const SizedBox(height: 16),
+          _primaryBtn("ثبت نتیجه", () {
+            setState(() {});
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("نتیجه ثبت شد ✅")),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // =====================
+  // Chat + Profile
+  // =====================
+  Widget _buildChatForum() => Column(
         children: [
           const Expanded(
             child: Center(
               child: Text(
                 "🗨️ تالار گفتگو سراسری نکسا\n"
-                "(کاربران گرامی، چت عمومی غیرفعال است. روی نام داور کلیک کنید.)",
+                "(چت عمومی دمو است)",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.black),
               ),
@@ -559,17 +1026,22 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             padding: const EdgeInsets.all(15),
             child: TextField(
               decoration: const InputDecoration(
-                hintText: "درج پیام خصوصی در گفتگو با نخبگان...",
+                hintText: "درج پیام...",
                 suffixIcon: Icon(Icons.send, color: Colors.blue),
                 border: OutlineInputBorder(),
               ),
+              onSubmitted: (v) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("پیام ارسال شد (دمو)")),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 50),
+          const SizedBox(height: 50)
         ],
       );
 
-  Widget buildProfileEditor() => SingleChildScrollView(
+  Widget _buildProfileEditor() => SingleChildScrollView(
         padding: const EdgeInsets.all(25),
         child: Column(
           children: [
@@ -580,7 +1052,7 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             ),
             const SizedBox(height: 25),
             TextField(
-              controller: pName,
+              controller: _pName,
               decoration: const InputDecoration(
                 labelText: "نام و نام خانوادگی",
                 border: OutlineInputBorder(),
@@ -588,7 +1060,7 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             ),
             const SizedBox(height: 10),
             TextField(
-              controller: pId,
+              controller: _pId,
               decoration: const InputDecoration(
                 labelText: "کد ملی شخصی",
                 border: OutlineInputBorder(),
@@ -596,27 +1068,37 @@ class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
             ),
             const SizedBox(height: 10),
             TextField(
-              controller: pMob,
+              controller: _pMob,
               decoration: const InputDecoration(
                 labelText: "شماره همراه سازمانی",
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 30),
-            PrimaryButton(title: "ذخیره نهایی اطلاعات", onPressed: () {}),
+            _primaryBtn("ذخیره نهایی اطلاعات", () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("ذخیره شد (دمو)")),
+              );
+            })
           ],
         ),
       );
 
-  Widget lbl(String t) => Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          t,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
-      );
+  // =====================
+  // Helpers
+  // =====================
+  String _statusFa(String s) {
+    switch (s) {
+      case "pending":
+        return "در انتظار ارجاع";
+      case "waiting_referee":
+        return "در انتظار نظر داور";
+      case "correction_needed":
+        return "نیاز به اصلاح";
+      case "published":
+        return "منتشر شده";
+      default:
+        return s;
+    }
+  }
 }
