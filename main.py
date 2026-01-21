@@ -1,163 +1,622 @@
-import streamlit as st
-import base64
-import os
-import smtplib
-from email.message import EmailMessage
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 
-# ۱. تنظیمات اولیه صفحه
-st.set_page_config(page_title="مدیریت محتوا - موسسه عاشورا", layout="wide")
+import '../data/fake_db.dart';
+import '../models/comment.dart';
+import '../models/referee_profile.dart';
+import '../models/submission.dart';
+import '../widgets/app_header.dart';
+import '../widgets/primary_button.dart';
 
-# ۲. تابع تبدیل فایل ها به Base64
-def get_base64(path):
-    try:
-        if os.path.exists(path):
-            with open(path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except: return ""
-    return ""
+class NexaSystemNavigator extends StatefulWidget {
+  const NexaSystemNavigator({super.key});
 
-img_bg = get_base64("Picture1.png")
-img_logo = get_base64("official_logo.png")
+  @override
+  State<NexaSystemNavigator> createState() => _NexaSystemNavigatorState();
+}
 
-# ۳. طراحی هنری (فونت B Nazanin، کادر روشن، ویدیو سایز استاندارد)
-st.markdown(f"""
-<style>
-    @font-face {{
-        font-family: 'B Nazanin';
-        src: local('B Nazanin');
-    }}
-    
-    html, body, [data-testid="stAppViewContainer"], p, span, label, h1, h2, h3, h4 {{
-        font-family: 'B Nazanin', 'Tahoma', sans-serif !important;
-        direction: rtl; text-align: right;
-        color: #1a237e !important;
-    }}
+class _NexaSystemNavigatorState extends State<NexaSystemNavigator> {
+  String currentStep = "welcome";
+  String userRole = "guest"; // user, manager, referee
+  String loginPhone = "";
+  String loginId = "";
+  int navIdx = 0;
 
-    /* تصویر پس‌زمینه کارگاهی */
-    [data-testid="stAppViewContainer"] {{
-        background-image: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url("data:image/png;base64,{img_bg}");
-        background-size: cover; background-position: center; background-attachment: fixed;
-    }}
+  final fieldCommittees = const [
+    "۱. حوزه معماری و منظر",
+    "۲. حوزه فنی و مهندسی",
+    "۳. حوزه برنامه‌ریزی و مدیریت پروژه",
+    "۴. حوزه کنترل پروژه",
+    "۵. حوزه نقشه‌برداری و فتوگرامتری",
+    "۶. حوزه بتن",
+    "۷. حوزه هوش مصنوعی",
+    "۸. حوزه ICT",
+    "۹. حوزه نگهداری و ماشین‌آلات (نت)",
+    "۱۰. حوزه کنترل کیفیت (QC)",
+    "۱۱. حوزه HSSE",
+    "۱۲. حوزه BIM",
+    "۱۳. حوزه آسفالت",
+    "۱۴. حوزه مالی و حسابداری",
+  ];
 
-    /* هدر آبی رنگ */
-    .header-nav {{
-        position: fixed; top: 0; left: 0; right: 0; height: 80px;
-        background: #0d47a1; display: flex; align-items: center; justify-content: center; z-index: 1000;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    }}
-    .header-nav h2 {{ color: #ffc107 !important; margin: 0; font-size: 32px; }}
-    
-    .logo-top {{ position: fixed; top: 12px; right: 25px; z-index: 1001; width: 100px; }}
+  final universityMajors = const [
+    "عمران",
+    "معماری",
+    "مکانیک",
+    "برق",
+    "هوش مصنوعی",
+    "صنایع",
+    "مدیریت",
+    "حقوق",
+  ];
 
-    .main .block-container {{ padding-top: 110px !important; }}
+  final pName = TextEditingController();
+  final pId = TextEditingController();
+  final pMob = TextEditingController();
 
-    /* سایدبار با تم روشن و فونت خوانا */
-    [data-testid="stSidebar"] {{
-        background-color: #fcfdfd !important;
-        border-left: 2px solid #ddd;
-    }}
-    [data-testid="stSidebar"] * {{
-        color: #0d47a1 !important;
-        font-weight: bold !important;
-    }}
+  void resetApp() => setState(() {
+        currentStep = "welcome";
+        userRole = "guest";
+        navIdx = 0;
+        loginPhone = "";
+        loginId = "";
+      });
 
-    /* کارت یادگیری با کلیک - حالت نمایشی */
-    .stExpander {{
-        border: none !important;
-        background: white !important;
-        border-radius: 20px !important;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.07) !important;
-        border-right: 12px solid #ffc107 !important;
-        margin-bottom: 15px;
-    }}
-    
-    /* سفید کردن کادرهای ورودی ثبت نام */
-    input, textarea, select {{
-        background-color: white !important;
-        color: #1a237e !important;
-        border: 2px solid #0d47a1 !important;
-        border-radius: 10px !important;
-    }}
+  @override
+  void dispose() {
+    pName.dispose();
+    pId.dispose();
+    pMob.dispose();
+    super.dispose();
+  }
 
-</style>
+  @override
+  Widget build(BuildContext context) {
+    switch (currentStep) {
+      case "welcome":
+        return buildWelcome();
+      case "login":
+        return buildLogin();
+      case "verify":
+        return buildVerify();
+      default:
+        return buildDashboard();
+    }
+  }
 
-<div class="logo-top"><img src="data:image/png;base64,{img_logo}" width="100"></div>
-<div class="header-nav"><h2>سامانه مهندسی محتوا و بازآفرینی دانش</h2></div>
-""", unsafe_allow_html=True)
+  Widget buildWelcome() => Scaffold(
+        body: Column(
+          children: [
+            const AppHeader(subtitle: "ورود به سامانه پایش تخصصی محتوا"),
+            Padding(
+              padding: const EdgeInsets.all(25),
+              child: Column(
+                children: [
+                  const Text(
+                    "لطفاً نوع کاربری خود را تعیین کنید:",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                  const SizedBox(height: 25),
+                  roleBtn("کاربر عادی (پرسنل اجرایی)", "user"),
+                  roleBtn("داور تخصصی / نخبگان دانشی", "referee"),
+                  roleBtn("مدیر سامانه", "manager"),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 
-# ۴. تابع فنی ارسال جیمیل
-def send_professional_email(name, phone, dept, title, script):
-    manager_mail = "hadibagherian4@gmail.com"
-    app_key = "fekcxbaflmjwmiwl"
-    msg = EmailMessage()
-    msg['Subject'] = f"🚀 پیشنهاد جدید: {title}"
-    msg['From'] = manager_mail
-    msg['To'] = manager_mail
-    msg.set_content(f"اطلاعات ارسالی:\nنام: {name}\nتلفن: {phone}\nواحد: {dept}\nعنوان: {title}\n\nسناریو:\n{script}")
-    try:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(manager_mail, app_key)
-            smtp.send_message(msg)
-            return True
-    except Exception as e: return str(e)
+  Widget roleBtn(String title, String role) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: const BorderSide(color: Color(0xFF002d5b), width: 2),
+            minimumSize: const Size(double.infinity, 55),
+          ),
+          onPressed: () => setState(() {
+            userRole = role;
+            currentStep = "login";
+          }),
+          child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      );
 
-# ۵. طراحی سایدبار روشن
-with st.sidebar:
-    st.image(f"data:image/png;base64,{img_logo}" if img_logo else None, width=150)
-    st.markdown("### 🧭 میز مدیریت محتوا")
-    app_mode = st.radio("بخش عملیاتی:", ["📂 ویترین دانش و آرشیو یادگیری", "🖋️ ثبت سناریو جدید"])
-    st.divider()
+  Widget buildLogin() => Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            children: [
+              const SizedBox(height: 80),
+              lbl("شماره همراه فعال سامانه :"),
+              TextField(
+                onChanged: (v) => loginPhone = v,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 15),
+              lbl("کد ملی کاربر (رمز ورود) :"),
+              TextField(
+                onChanged: (v) => loginId = v,
+                obscureText: true,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 25),
+              PrimaryButton(
+                title: "درخواست کد تایید هویت",
+                onPressed: () => setState(() => currentStep = "verify"),
+              ),
+            ],
+          ),
+        ),
+      );
 
-# --- بخش ۱: آرشیو محتوا با سیستم "کلیک و نمایش" ---
-if app_mode == "📂 ویترین دانش و آرشیو یادگیری":
-    st.markdown("<h2 style='text-align: center;'>📚 کتابخانه چندرسانه‌ای یادگیری هوشمند</h2>", unsafe_allow_html=True)
-    st.write("لطفاً بر روی تیتـر آموزش مورد نظر کلیک کنید تا محتوا و ویدیـو نمایش داده شود:")
+  Widget buildVerify() => Scaffold(
+        body: Center(
+          child: PrimaryButton(
+            title: "تایید و ورود نهایی",
+            width: 250,
+            onPressed: handleFinalLogin,
+          ),
+        ),
+      );
 
-    tabs = st.tabs(["🏗️ فنی و مهندسی", "🦺 HSSE", "💰 مالی", "🧠 مدیریت"])
+  void handleFinalLogin() {
+    if (userRole == "referee") {
+      final ok = FakeDb.referees.any(
+          (r) => r.phone == loginPhone.trim() && r.nationalId == loginId.trim());
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("هویت داوری شما توسط مدیر ثبت نشده است")),
+        );
+        return;
+      }
+    }
+    setState(() => currentStep = "main");
+  }
 
-    with tabs[0]: # بخش فنی
-        # پیاده سازی کلیک روی متن برای نمایش ویدیو
-        with st.expander("🎬 🎬 استاندارد روسازی راه (نشریه ۱۰۱) - مشاهده جزییات و فیلم"):
-            st.markdown("""
-                <h3 style='color:#0d47a1'>ضوابط اجرایی آسفالت و بتن در مناطق سردسیر</h3>
-                <p>این ویدیو شامل نکات تخصصی در خصوص درجات حرارت بتن، مواد افزودنی ضدیخ و روش‌های حفاظتی در دماهای بحرانی طبق نشریات مصوب است.</p>
-                <hr>
-            """, unsafe_allow_html=True)
-            
-            # کنترل سایز ویدیو با استفاده از ستون ها (ایجاد ستون خالی در کناره ها)
-            v_col1, v_col2, v_col3 = st.columns([1, 4, 1])
-            with v_col2:
-                if os.path.exists("rosazi.mp4"):
-                    st.video("rosazi.mp4")
-                else:
-                    st.error("فایل rosazi.mp4 در گیت‌هاب یافت نشد.")
-            st.markdown("<p style='text-align:center;'>تاریخ تولید: ۱۴۰۳/۰۹/۱۵ | زمان: ۱ دقیقه</p>", unsafe_allow_html=True)
+  Widget buildDashboard() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "نکسا | میز $userRole",
+          style: const TextStyle(
+            color: Color(0xFF002d5b),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: resetApp,
+            icon: const Icon(Icons.logout, color: Colors.red),
+          )
+        ],
+      ),
+      body: buildPage(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: navIdx,
+        selectedItemColor: const Color(0xFF002d5b),
+        onTap: (i) => setState(() => navIdx = i),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "میز کار"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.forum_outlined), label: "تالار گفتگو"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person_pin), label: "پروفایل"),
+        ],
+      ),
+    );
+  }
 
-    with tabs[1]:
-        st.info("محتواهای حوزه ایمنی در ارتفاع در حال تولید نهایی است...")
+  Widget buildPage() {
+    if (navIdx == 1) return buildChatForum();
+    if (navIdx == 2) return buildProfileEditor();
 
-# --- بخش ۲: ثبت سناریو جدید (مبتنی بر عکس فرم شما) ---
-else:
-    st.markdown("<h2 style='text-align: center;'>لطفاً محتوا آموزشی درخواستی خود را تکمیل فرمایید. ثبت سناریو تولید محتوا</h2>", unsafe_allow_html=True)
-    
-    with st.form("professional_request"):
-        r1c1, r1c2 = st.columns(2)
-        n = r1c1.text_input("👤 نام و نام خانوادگی:")
-        p = r1c2.text_input("📞 شماره تماس مستقیم:")
-        
-        dept = st.selectbox("🎯 واحد سازمانی:", ["فنی و مهندسی", "HSSE", "مالی و منابع انسانی", "ماشین‌آلات"])
-        topic = st.text_input("📌 عنوان موضوع آموزشی:")
-        script = st.text_area("📄 سناریو پیشنهادی یا شرح کامل چالش (آموزشی):", height=200)
-        
-        if st.form_submit_button("🚀 تایید نهایی و ارسال به مدیریت تولید محتوا"):
-            if n and p and script:
-                with st.spinner('در حال برقراری ارتباط با ایمیل...'):
-                    res = send_professional_email(n, p, dept, topic, script)
-                    if res is True:
-                        st.success(f"جناب {n} عزیز، درخواست شما ثبت شد و به زودی بررسی می‌گردد.")
-                        st.balloons()
-                    else: st.error(f"خطا در ارسال ایمیل: {res}")
-            else: st.warning("فیلدهای ضروری را تکمیل کن !")
+    switch (userRole) {
+      case "user":
+        return buildUserWorkbench();
+      case "manager":
+        return buildManagerWorkbench();
+      case "referee":
+        return buildRefereeWorkbench();
+      default:
+        return const Center(child: Text("نقش کاربری نامشخص است"));
+    }
+  }
 
-# ۷. فوتر
-st.markdown("<br><hr><div style='text-align:center; padding:15px; background:#0d47a1; color:white; border-radius:15px; font-weight:bold;'>مرکز برنامه ریزی و توسعه موسسه عاشورا - سامانه مدیریت محتوا</div>", unsafe_allow_html=True)
+  // ---------------- USER ----------------
+  Widget buildUserWorkbench() => DefaultTabController(
+        length: 4,
+        child: Column(
+          children: [
+            const TabBar(
+              isScrollable: true,
+              labelColor: Color(0xFF002d5b),
+              indicatorColor: Color(0xFFfbbf24),
+              tabs: [
+                Tab(text: "ویترین دانش"),
+                Tab(text: "ارسال محتوا"),
+                Tab(text: "وضعیت پیگیری"),
+                Tab(text: "پیشنهاد موضوعات"),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  buildShowcase(),
+                  buildSubmitForm(),
+                  buildTracking(),
+                  buildUniversityList(),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+
+  Widget buildShowcase() => ListView.builder(
+        itemCount: FakeDb.submissions.length,
+        itemBuilder: (c, i) => buildContentCard(FakeDb.submissions[i]),
+      );
+
+  Widget buildContentCard(Submission s) => Card(
+        margin: const EdgeInsets.all(15),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Image.asset(
+              s.imgPath,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (c, e, st) => Container(
+                height: 180,
+                color: Colors.blue.shade50,
+                child: const Icon(Icons.engineering),
+              ),
+            ),
+            ListTile(
+              title: Text(s.title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black)),
+              subtitle: Text("${s.field} | کد دانشی: ${s.knowledgeCode}"),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon:
+                        const Icon(Icons.favorite_border, color: Colors.red),
+                    onPressed: () => setState(() => s.likes++),
+                  ),
+                  Text(" پسندیدن (${s.likes})",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => openComments(s),
+                    child: const Text("نظرات",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+
+  void openComments(Submission s) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(c).viewInsets.bottom,
+          top: 15,
+          left: 15,
+          right: 15,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("بخش تبادل دیدگاه‌های تخصصی",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                itemCount: s.comments.length,
+                itemBuilder: (cc, ii) => ListTile(
+                  title: Text(
+                    s.comments[ii].user,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                  subtitle: Text(s.comments[ii].text,
+                      style: const TextStyle(color: Colors.black)),
+                  trailing: userRole == "manager"
+                      ? IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            setState(() => s.comments.removeAt(ii));
+                            Navigator.pop(c);
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            TextField(
+              decoration: const InputDecoration(
+                hintText: "درج دیدگاه نخبگان...",
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (v) {
+                setState(() {
+                  s.comments.add(Comment(id: "x", user: "همکار پروژه", text: v));
+                });
+                Navigator.pop(c);
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildSubmitForm() => SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          children: [
+            const TextField(
+              decoration:
+                  InputDecoration(labelText: "عنوان سناریو / محتوای فنی"),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "حوزه تخصصی پیشنهادی"),
+              items: fieldCommittees
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (_) {},
+            ),
+            const SizedBox(height: 15),
+            filePickerField(),
+            const SizedBox(height: 30),
+            PrimaryButton(
+              title: "ثبت نهایی و ارسال به سازمان",
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("با موفقیت ثبت گردید")),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+
+  Widget filePickerField() => InkWell(
+        onTap: () async {
+          final res = await FilePicker.platform.pickFiles();
+          if (res != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("فایل با موفقیت بارگذاری شد.")),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.grey.shade50,
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.attachment),
+              SizedBox(width: 15),
+              Text("پیوست فایل (حافظه گوشی یا رایانه)"),
+            ],
+          ),
+        ),
+      );
+
+  Widget buildTracking() => ListView.builder(
+        itemCount: 1,
+        itemBuilder: (c, i) => const ListTile(
+          title: Text("طرح: بهسازی لایه ها"),
+          subtitle: Text("وضعیت: در حال ارزیابی کمیته تخصصی"),
+          trailing: Icon(Icons.timer),
+        ),
+      );
+
+  Widget buildUniversityList() => ListView.builder(
+        itemCount: universityMajors.length,
+        itemBuilder: (c, i) => Card(
+          child: ListTile(
+            title: Text("رشته ${universityMajors[i]}"),
+            subtitle: const Text("پیشنهاد موضوعات خدمت و پایان‌نامه"),
+          ),
+        ),
+      );
+
+  // ---------------- MANAGER ----------------
+  Widget buildManagerWorkbench() => DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const TabBar(
+              labelColor: Color(0xFF002d5b),
+              tabs: [
+                Tab(text: "میز ارجاع ارشد"),
+                Tab(text: "ثبت داور تخصصی"),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  ListView.builder(
+                    itemCount: 2,
+                    itemBuilder: (c, i) => ListTile(
+                      title: const Text("سناریو فنی تثبیت روسازی"),
+                      subtitle: const Text("فرستنده: کارگاه ساوه | منتظر ارجاع"),
+                      trailing: ElevatedButton(
+                        onPressed: showReferralDialog,
+                        child: const Text("بررسی و ارجاع"),
+                      ),
+                    ),
+                  ),
+                  addRefereeForm(),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+
+  void showReferralDialog() {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text("ارجاع به کمیته و داور:"),
+        content: DropdownButton<RefereeProfile>(
+          isExpanded: true,
+          items: FakeDb.referees
+              .map(
+                (r) => DropdownMenuItem(
+                  value: r,
+                  child: Text("${r.firstName} ${r.lastName} - ${r.field}"),
+                ),
+              )
+              .toList(),
+          onChanged: (v) {
+            Navigator.pop(c);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("به نخبگان حوزه مربوطه ارجاع شد.")),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget addRefereeForm() => SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          children: [
+            const Text("تعریف داور فنی (صدور اجازه ورود)"),
+            const TextField(decoration: InputDecoration(labelText: "نام نخبگان")),
+            const TextField(decoration: InputDecoration(labelText: "شماره همراه")),
+            const TextField(
+                decoration: InputDecoration(labelText: "کد ملی (ID ورود)")),
+            const SizedBox(height: 20),
+            PrimaryButton(
+              title: "تایید و ساخت پنل نخبگان",
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("داور جدید با موفقیت ثبت شد")),
+                );
+              },
+            )
+          ],
+        ),
+      );
+
+  // ---------------- REFEREE (placeholder) ----------------
+  Widget buildRefereeWorkbench() => const Center(
+        child: Text(
+          "پنل داور (در نسخه گیت‌هابی تفکیک‌شده)\n"
+          "— این بخش را در قدم بعدی دقیقاً مثل منطق شما کامل می‌کنم —",
+          textAlign: TextAlign.center,
+        ),
+      );
+
+  // ---------------- COMMON ----------------
+  Widget buildChatForum() => Column(
+        children: [
+          const Expanded(
+            child: Center(
+              child: Text(
+                "🗨️ تالار گفتگو سراسری نکسا\n"
+                "(کاربران گرامی، چت عمومی غیرفعال است. روی نام داور کلیک کنید.)",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(15),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: "درج پیام خصوصی در گفتگو با نخبگان...",
+                suffixIcon: Icon(Icons.send, color: Colors.blue),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 50),
+        ],
+      );
+
+  Widget buildProfileEditor() => SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          children: [
+            const CircleAvatar(
+              radius: 50,
+              backgroundColor: Color(0xFF002d5b),
+              child: Icon(Icons.person, color: Colors.white, size: 50),
+            ),
+            const SizedBox(height: 25),
+            TextField(
+              controller: pName,
+              decoration: const InputDecoration(
+                labelText: "نام و نام خانوادگی",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: pId,
+              decoration: const InputDecoration(
+                labelText: "کد ملی شخصی",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: pMob,
+              decoration: const InputDecoration(
+                labelText: "شماره همراه سازمانی",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 30),
+            PrimaryButton(title: "ذخیره نهایی اطلاعات", onPressed: () {}),
+          ],
+        ),
+      );
+
+  Widget lbl(String t) => Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          t,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      );
+}
