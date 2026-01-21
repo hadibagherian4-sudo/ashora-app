@@ -1,4 +1,5 @@
 import streamlit as st
+st.write("VERSION 2 ✅")
 from dataclasses import dataclass, field
 from typing import List, Optional
 
